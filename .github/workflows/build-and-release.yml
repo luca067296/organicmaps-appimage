@@ -1,7 +1,9 @@
-name: Build and Release Organic Maps (Anylinux)
+name: Build and Release Organic Maps 
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [ main ]
+  workflow_dispatch: 
 
 permissions:
   contents: write
@@ -40,7 +42,6 @@ jobs:
           cp organicmaps/build/release/OMaps AppDir/usr/bin/OMaps.bin
           cp -r organicmaps/data/* AppDir/usr/share/organicmaps/
           
-          # Create a wrapper script to separate read-only resources from writable user data
           cat << 'EOF' > AppDir/usr/bin/OMaps
           #!/bin/sh
           HERE="$(dirname "$(readlink -f "$0")")"
@@ -52,7 +53,6 @@ jobs:
           EOF
           chmod +x AppDir/usr/bin/OMaps
 
-          # Copy logo.png from the repository root to AppDir
           cp logo.png AppDir/organicmaps.png
 
           cat << 'EOF' > AppDir/organicmaps.desktop
@@ -74,11 +74,9 @@ jobs:
           export QMAKE=/usr/lib/qt6/bin/qmake
           export EXTRA_QT_PLUGINS="positioning,svg,wayland,tls,networkinformation"
 
-          # Dynamically locate the system's OpenSSL libraries
           SSL_LIB=$(ldconfig -p | grep libssl.so | awk '{print $4}' | head -n 1)
           CRYPTO_LIB=$(ldconfig -p | grep libcrypto.so | awk '{print $4}' | head -n 1)
 
-          # Force linuxdeploy to include the OpenSSL libraries using the -l flag
           ./linuxdeploy.AppImage --appimage-extract-and-run \
             --appdir AppDir \
             --plugin qt \
@@ -94,12 +92,10 @@ jobs:
           GENERATED_APPIMAGE=$(ls *.AppImage | grep -v linuxdeploy | head -n 1)
           mv "$GENERATED_APPIMAGE" OrganicMaps-x86_64.AppImage
 
-      - name: Create GitHub Release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          TAG_NAME=$(date +'%Y.%m.%d')
-          gh release create "$TAG_NAME" OrganicMaps-x86_64.AppImage \
-            --repo ${{ github.repository }} \
-            --title "Organic Maps Anylinux AppImage ($TAG_NAME)" \
-            --notes "Unofficial Linux build generated via GitHub Actions using the Anylinux packaging method."
+      - name: Publish to GitHub Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: continuous
+          name: "Organic Maps Continuous Build"
+          files: "*.AppImage"
+          prerelease: true
