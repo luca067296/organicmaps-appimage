@@ -8,12 +8,20 @@ permissions:
 
 jobs:
   build-and-release:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-22.04 # Changed from 24.04 to maximize backward compatibility
 
     steps:
-      - name: Install system dependencies
+      - name: Add PPAs for older Ubuntu support
         run: |
           sudo apt-get update
+          sudo apt-get install -y software-properties-common
+          # Add workarounds for Ubuntu 22.04 as per Organic Maps documentation
+          sudo add-apt-repository -y ppa:savoury1/qt-6-2
+          sudo add-apt-repository -y ppa:reviczky/freetype
+          sudo apt-get update
+
+      - name: Install system dependencies
+        run: |
           sudo apt-get install -y build-essential cmake ninja-build python3 qt6-base-dev qt6-positioning-dev libc++-dev libfreetype-dev libglvnd-dev libgl1-mesa-dev libharfbuzz-dev libicu-dev libqt6svg6-dev libsqlite3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev zlib1g-dev
 
       - name: Clone Organic Maps repository
@@ -26,7 +34,7 @@ jobs:
           cmake --preset release
           cmake --build --preset release --target desktop
 
-      - name: Package AppImage
+      - name: Package AppImage with Qt dependencies
         run: |
           cd organicmaps
           mkdir -p AppDir/usr/bin
@@ -59,9 +67,18 @@ jobs:
               touch AppDir/organicmaps.png
           fi
           
-          wget -qO appimagetool https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
-          chmod +x appimagetool
-          ARCH=x86_64 ./appimagetool --appimage-extract-and-run AppDir OrganicMaps-x86_64.AppImage
+          # Download linuxdeploy and linuxdeploy-plugin-qt
+          wget -qO linuxdeploy.AppImage https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+          wget -qO linuxdeploy-plugin-qt.AppImage https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
+          chmod +x linuxdeploy*.AppImage
+
+          export QMAKE=/usr/lib/qt6/bin/qmake
+          export EXTRA_QT_PLUGINS="positioning,svg"
+
+          # Bundle everything into the AppImage
+          ./linuxdeploy.AppImage --appimage-extract-and-run --appdir AppDir --plugin qt --output appimage
+          
+          mv Organic_Maps-x86_64.AppImage OrganicMaps-x86_64.AppImage || mv *.AppImage OrganicMaps-x86_64.AppImage
 
       - name: Create GitHub Release
         env:
