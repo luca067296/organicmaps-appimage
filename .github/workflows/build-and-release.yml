@@ -37,7 +37,6 @@ jobs:
           cp organicmaps/build/release/OMaps AppDir/usr/bin/
           cp -r organicmaps/data/* AppDir/usr/share/organicmaps/
           
-          # Create the missing AppRun file
           cat << 'EOF' > AppDir/AppRun
           #!/bin/sh
           HERE="$(dirname "$(readlink -f "$0")")"
@@ -66,8 +65,12 @@ jobs:
         run: |
           chmod +x anylinux-appimages/useful-tools/quick-sharun.sh
           
-          # Use the updated command to build the AppImage
-          ./anylinux-appimages/useful-tools/quick-sharun.sh --make-appimage AppDir OrganicMaps-x86_64.AppImage
+          # Pass only the directory to the script
+          ./anylinux-appimages/useful-tools/quick-sharun.sh --make-appimage AppDir
+          
+          # Find whatever .AppImage was generated and rename it to our target name
+          GENERATED_APPIMAGE=$(ls *.AppImage | head -n 1)
+          mv "$GENERATED_APPIMAGE" OrganicMaps-x86_64.AppImage
 
       - name: Create GitHub Release
         env:
