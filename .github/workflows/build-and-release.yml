@@ -97,5 +97,5 @@ jobs:
         with:
           tag_name: continuous
           name: "Organic Maps Continuous Build"
-          files: "*.AppImage"
+          files: "OrganicMaps-x86_64.AppImage"
           prerelease: true
