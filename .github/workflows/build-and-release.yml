@@ -37,6 +37,14 @@ jobs:
           cp organicmaps/build/release/OMaps AppDir/usr/bin/
           cp -r organicmaps/data/* AppDir/usr/share/organicmaps/
           
+          # Create the missing AppRun file
+          cat << 'EOF' > AppDir/AppRun
+          #!/bin/sh
+          HERE="$(dirname "$(readlink -f "$0")")"
+          exec "$HERE/usr/bin/OMaps" -data_path "$HERE/usr/share/organicmaps" "$@"
+          EOF
+          chmod +x AppDir/AppRun
+
           ICON_PATH=$(find organicmaps/data -iname "*logo*.png" -o -iname "*icon*.png" | head -n 1)
           if [ -n "$ICON_PATH" ]; then
               cp "$ICON_PATH" AppDir/organicmaps.png
@@ -48,7 +56,7 @@ jobs:
           [Desktop Entry]
           Type=Application
           Name=Organic Maps
-          Exec=OMaps -data_path /usr/share/organicmaps
+          Exec=AppRun
           Icon=organicmaps
           Terminal=false
           Categories=Education;Science;Maps;Geography;
@@ -56,10 +64,10 @@ jobs:
 
       - name: Package with Anylinux
         run: |
-          chmod +x anylinux-appimages/useful-tools/uruntime2appimage.sh
           chmod +x anylinux-appimages/useful-tools/quick-sharun.sh
           
-          ./anylinux-appimages/useful-tools/uruntime2appimage.sh AppDir OrganicMaps-x86_64.AppImage
+          # Use the updated command to build the AppImage
+          ./anylinux-appimages/useful-tools/quick-sharun.sh --make-appimage AppDir OrganicMaps-x86_64.AppImage
 
       - name: Create GitHub Release
         env:
