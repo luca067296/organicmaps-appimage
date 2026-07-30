@@ -15,13 +15,18 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y software-properties-common
-          sudo add-apt-repository -y ppa:savoury1/qt-6-2
           sudo add-apt-repository -y ppa:reviczky/freetype
           sudo apt-get update
 
-      - name: Install system dependencies
+      - name: Install system dependencies (excluding Qt)
         run: |
-          sudo apt-get install -y build-essential cmake ninja-build python3 qt6-base-dev qt6-positioning-dev libc++-dev libfreetype-dev libglvnd-dev libgl1-mesa-dev libharfbuzz-dev libicu-dev libqt6svg6-dev libsqlite3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev zlib1g-dev git wget
+          sudo apt-get install -y build-essential cmake ninja-build python3 python3-pip libc++-dev libfreetype-dev libglvnd-dev libgl1-mesa-dev libharfbuzz-dev libicu-dev libsqlite3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev zlib1g-dev git wget
+
+      - name: Install Qt 6.5 via aqtinstall
+        run: |
+          pip3 install aqtinstall
+          # Install Qt 6.5.3 and the specific modules required by Organic Maps
+          python3 -m aqt install-qt linux desktop 6.5.3 gcc_64 -m qtpositioning qtsvg
 
       - name: Clone Organic Maps
         run: git clone --recurse-submodules --shallow-submodules --depth=1 https://github.com/organicmaps/organicmaps.git
@@ -29,6 +34,10 @@ jobs:
       - name: Configure and build Organic Maps
         run: |
           cd organicmaps
+          
+          # Tell CMake where to find the Qt installation
+          export CMAKE_PREFIX_PATH=$GITHUB_WORKSPACE/6.5.3/gcc_64
+          
           bash ./configure.sh
           cmake --preset release
           cmake --build --preset release --target desktop
