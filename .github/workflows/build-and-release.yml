@@ -17,7 +17,7 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential cmake ninja-build python3 qt6-base-dev qt6-positioning-dev libc++-dev libfreetype-dev libglvnd-dev libgl1-mesa-dev libharfbuzz-dev libicu-dev libqt6svg6-dev libsqlite3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev zlib1g-dev git wget
+          sudo apt-get install -y build-essential cmake ninja-build python3 qt6-base-dev qt6-positioning-dev libc++-dev libfreetype-dev libglvnd-dev libgl1-mesa-dev libharfbuzz-dev libicu-dev libqt6svg6-dev libsqlite3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev zlib1g-dev libssl-dev git wget
 
       - name: Clone Organic Maps
         run: git clone --recurse-submodules --shallow-submodules --depth=1 https://github.com/organicmaps/organicmaps.git
@@ -40,6 +40,7 @@ jobs:
           cp organicmaps/build/release/OMaps AppDir/usr/bin/OMaps.bin
           cp -r organicmaps/data/* AppDir/usr/share/organicmaps/
           
+          # Create a wrapper script to separate read-only resources from writable user data
           cat << 'EOF' > AppDir/usr/bin/OMaps
           #!/bin/sh
           HERE="$(dirname "$(readlink -f "$0")")"
@@ -51,6 +52,7 @@ jobs:
           EOF
           chmod +x AppDir/usr/bin/OMaps
 
+          # Copy logo.png from the repository root to AppDir
           cp logo.png AppDir/organicmaps.png
 
           cat << 'EOF' > AppDir/organicmaps.desktop
@@ -70,10 +72,21 @@ jobs:
           chmod +x linuxdeploy*.AppImage
 
           export QMAKE=/usr/lib/qt6/bin/qmake
-          # Added tls and networkinformation to bundle the SSL backend
           export EXTRA_QT_PLUGINS="positioning,svg,wayland,tls,networkinformation"
 
-          ./linuxdeploy.AppImage --appimage-extract-and-run --appdir AppDir --plugin qt --executable AppDir/usr/bin/OMaps.bin -d AppDir/organicmaps.desktop -i AppDir/organicmaps.png
+          # Dynamically locate the system's OpenSSL libraries
+          SSL_LIB=$(ldconfig -p | grep libssl.so | awk '{print $4}' | head -n 1)
+          CRYPTO_LIB=$(ldconfig -p | grep libcrypto.so | awk '{print $4}' | head -n 1)
+
+          # Force linuxdeploy to include the OpenSSL libraries using the -l flag
+          ./linuxdeploy.AppImage --appimage-extract-and-run \
+            --appdir AppDir \
+            --plugin qt \
+            --executable AppDir/usr/bin/OMaps.bin \
+            -d AppDir/organicmaps.desktop \
+            -i AppDir/organicmaps.png \
+            -l "$SSL_LIB" \
+            -l "$CRYPTO_LIB"
 
           chmod +x anylinux-appimages/useful-tools/quick-sharun.sh
           ./anylinux-appimages/useful-tools/quick-sharun.sh --make-appimage AppDir
