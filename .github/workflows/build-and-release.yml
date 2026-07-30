@@ -40,10 +40,17 @@ jobs:
           cp organicmaps/build/release/OMaps AppDir/usr/bin/OMaps.bin
           cp -r organicmaps/data/* AppDir/usr/share/organicmaps/
           
+          # Create a wrapper script to separate read-only resources from writable user data
           cat << 'EOF' > AppDir/usr/bin/OMaps
           #!/bin/sh
           HERE="$(dirname "$(readlink -f "$0")")"
-          exec "$HERE/OMaps.bin" -data_path "$HERE/../share/organicmaps" "$@"
+          
+          # Set the writable directory for user downloads (maps, settings, etc.)
+          USER_DATA="${XDG_DATA_HOME:-$HOME/.local/share}/OMaps"
+          mkdir -p "$USER_DATA"
+          
+          # Execute the binary with separated paths
+          exec "$HERE/OMaps.bin" -resources_path "$HERE/../share/organicmaps" -data_path "$USER_DATA" "$@"
           EOF
           chmod +x AppDir/usr/bin/OMaps
 
