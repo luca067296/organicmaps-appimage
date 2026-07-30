@@ -40,21 +40,17 @@ jobs:
           cp organicmaps/build/release/OMaps AppDir/usr/bin/OMaps.bin
           cp -r organicmaps/data/* AppDir/usr/share/organicmaps/
           
-          # Create a wrapper script to separate read-only resources from writable user data
           cat << 'EOF' > AppDir/usr/bin/OMaps
           #!/bin/sh
           HERE="$(dirname "$(readlink -f "$0")")"
           
-          # Set the writable directory for user downloads (maps, settings, etc.)
           USER_DATA="${XDG_DATA_HOME:-$HOME/.local/share}/OMaps"
           mkdir -p "$USER_DATA"
           
-          # Execute the binary with separated paths
           exec "$HERE/OMaps.bin" -resources_path "$HERE/../share/organicmaps" -data_path "$USER_DATA" "$@"
           EOF
           chmod +x AppDir/usr/bin/OMaps
 
-          # Copy logo.png from the repository root to AppDir
           cp logo.png AppDir/organicmaps.png
 
           cat << 'EOF' > AppDir/organicmaps.desktop
@@ -74,7 +70,8 @@ jobs:
           chmod +x linuxdeploy*.AppImage
 
           export QMAKE=/usr/lib/qt6/bin/qmake
-          export EXTRA_QT_PLUGINS="positioning,svg,wayland"
+          # Added tls and networkinformation to bundle the SSL backend
+          export EXTRA_QT_PLUGINS="positioning,svg,wayland,tls,networkinformation"
 
           ./linuxdeploy.AppImage --appimage-extract-and-run --appdir AppDir --plugin qt --executable AppDir/usr/bin/OMaps.bin -d AppDir/organicmaps.desktop -i AppDir/organicmaps.png
 
